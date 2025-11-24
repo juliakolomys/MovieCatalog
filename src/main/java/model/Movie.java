@@ -26,14 +26,14 @@ public class Movie {
 
     @Override
     public String toString() {
-        return "Movie{" +
+        return "Movie(" +
                 "id:'" + id + '\'' +
                 ", title:'" + title + '\'' +
                 ", year " + year +
                 ", genres:" + genres +
                 ", directors:" + directors +
                 ", actors:" + actors +
-                '}';
+                ')';
     }
 
     @Override

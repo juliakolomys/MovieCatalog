@@ -1,6 +1,5 @@
 package db;
 
-
 import model.Movie;
 
 import java.sql.SQLException;

@@ -1,51 +1,40 @@
 import db.MovieDao;
 import db.PostgresMovieDao;
-import model.Movie;
 import model.ScoredMovie;
 import search.ElasticsearchService;
-import service.RecommendationService;
+import search.EsCandidateGenerator;
+import service.RecommendationEngine;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.List;
 
 public class AppMain {
+    public static void main(String[] args) throws Exception {
 
-    public static void main(String[] args) {
+        Connection conn = DriverManager.getConnection(
+                "jdbc:postgresql://localhost:5432/moviedb",
+                "postgres",
+                "password"
+        );
 
-        String url = "jdbc:postgresql://localhost:5432/moviedb";
-        String user = "postgres";
-        String password = "password";
+        MovieDao movieDao = new PostgresMovieDao(conn);
 
-        try (Connection conn = DriverManager.getConnection(url, user, password)) {
+        ElasticsearchService es = new ElasticsearchService("localhost", 9200);
+        EsCandidateGenerator gen = new EsCandidateGenerator(es);
 
-            MovieDao movieDao = new PostgresMovieDao(conn);
+        RecommendationEngine engine = new RecommendationEngine(movieDao, gen);
 
-            ElasticsearchService esService = new ElasticsearchService("localhost", 9200);
+        String movieId = "tt0111161"; // Shawshank
 
+        List<ScoredMovie> recs = engine.recommend(movieId, 10);
 
-            List<Movie> allMovies = movieDao.findAll(100);
-            for (Movie movie : allMovies) {
-                esService.indexMovie(movie);
-            }
-
-            RecommendationService recService = new RecommendationService(movieDao, esService);
-
-
-            String movieId = "1";
-            List<ScoredMovie> recommendations = recService.recommendForMovie(movieId, 5);
-
-            System.out.println("Рек для фільму з ID " + movieId + ":");
-            for (ScoredMovie sm : recommendations) {
-                System.out.println(sm);
-            }
-
-            esService.close();
-
-        } catch (SQLException | IOException e) {
-            e.printStackTrace();
+        System.out.println("Recommendations:");
+        for (ScoredMovie r : recs) {
+            System.out.printf("- %s (score %.3f)%n", r.movie.title, r.score);
         }
+
+        es.close();
+        conn.close();
     }
 }

@@ -11,6 +11,6 @@ public class ScoredMovie {
 
     @Override
     public String toString() {
-        return movie.title + " (score:" + score + ")";
+        return movie.title + " score:" + score;
     }
 }

@@ -20,17 +20,33 @@ public class RecommendationService {
         this.searchService = searchService;
     }
 
+    /**
+     * Генерує рекомендації для заданого фільму за описом та додатковими фічами (жанр, рік)
+     *
+     * @param movieId - id фільму, для якого робимо рекомендації
+     * @param topN    - кількість рекомендацій
+     * @return список рекомендованих фільмів зі скором
+     */
     public List<ScoredMovie> recommendForMovie(String movieId, int topN) throws SQLException, IOException {
         Movie movie = movieDao.findById(movieId);
         if (movie == null) return List.of();
 
-        List<String> similarIds = searchService.search(movie.description, topN + 1); // +1, бо сам фільм включається
+        // Пошук у Elasticsearch за описом та отримання релевантних хітів з їхніми оцінками BM25
+        List<ElasticsearchService.Hit> hits = searchService.search(movie.description, topN + 1); // +1 бо сам фільм теж може потрапити
+
         List<ScoredMovie> recommendations = new ArrayList<>();
-        for (String id : similarIds) {
-            if (!id.equals(movieId)) {
-                Movie m = movieDao.findById(id);
+        for (ElasticsearchService.Hit hit : hits) {
+            // Виключаємо сам фільм
+            if (!hit.id.equals(movieId)) {
+                Movie m = movieDao.findById(hit.id);
                 if (m != null) {
-                    recommendations.add(new ScoredMovie(m, 1.0)); // В реальному випадку можна ставити BM25 score
+                    // Можна підкоригувати score
+                    double finalScore = hit.score;
+                    if (movie.genres != null && movie.genres.equals(m.genres)) finalScore += 0.2; // невеликий бонус за співпадіння жанру
+                    if (movie.year == m.year) finalScore += 0.1;
+                    // бонус за рік
+
+                    recommendations.add(new ScoredMovie(m, finalScore));
                 }
             }
         }
