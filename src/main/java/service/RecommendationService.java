@@ -27,29 +27,48 @@ public class RecommendationService {
      * @param topN    - кількість рекомендацій
      * @return список рекомендованих фільмів зі скором
      */
-    public List<ScoredMovie> recommendForMovie(String movieId, int topN) throws SQLException, IOException {
-        Movie movie = movieDao.findById(movieId);
-        if (movie == null) return List.of();
-
-        // Пошук у Elasticsearch за описом та отримання релевантних хітів з їхніми оцінками BM25
-        List<ElasticsearchService.Hit> hits = searchService.search(movie.description, topN + 1); // +1 бо сам фільм теж може потрапити
-
+    public List<ScoredMovie> recommendForMovie(String movieId, int topN) {
         List<ScoredMovie> recommendations = new ArrayList<>();
-        for (ElasticsearchService.Hit hit : hits) {
-            // Виключаємо сам фільм
-            if (!hit.id.equals(movieId)) {
-                Movie m = movieDao.findById(hit.id);
-                if (m != null) {
-                    // Можна підкоригувати score
-                    double finalScore = hit.score;
-                    if (movie.genres != null && movie.genres.equals(m.genres)) finalScore += 0.2; // невеликий бонус за співпадіння жанру
-                    if (movie.year == m.year) finalScore += 0.1;
-                    // бонус за рік
+        Movie movie;
 
-                    recommendations.add(new ScoredMovie(m, finalScore));
-                }
+        try {
+            movie = movieDao.findById(movieId);
+            if (movie == null) {
+                System.out.println("Movie with id " + movieId + " wasnt found");
+                return recommendations;
             }
+        } catch (SQLException e) {
+            System.out.println("Error accessing date base: " + e.getMessage());
+            return recommendations;
         }
+
+        List<ElasticsearchService.Hit> hits = new ArrayList<>();
+        try {
+            hits = searchService.search(movie.description, topN + 1);
+        } catch (IOException e) {
+            System.out.println("Error search in Elasticsearch: " + e.getMessage());
+        }
+
+        for (ElasticsearchService.Hit hit : hits) {
+            if (hit.id.equals(movieId)) continue;
+
+            Movie m;
+            try {
+                m = movieDao.findById(hit.id);
+                if (m == null) continue;
+            } catch (SQLException e) {
+                System.out.println("Error retrieving a movie from date base: " + e.getMessage());
+                continue;
+            }
+
+            double finalScore = hit.score;
+
+            if (movie.genres != null && movie.genres.equals(m.genres)) finalScore += 0.2;
+            if (movie.year == m.year) finalScore += 0.1;
+
+            recommendations.add(new ScoredMovie(m, finalScore));
+        }
+
         return recommendations;
     }
 }
