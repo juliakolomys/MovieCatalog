@@ -16,10 +16,10 @@ public class PostgresMovieDao implements MovieDao {
     }
 
     @Override
-    public Movie findById(String id) throws SQLException {
-        String sql = "SELECT id, title, year, genres, directors, actors, description FROM movies WHERE id = ?";
+    public Movie findById(int id) throws SQLException {
+        String sql = "SELECT id, title, release_year, genres, directors, actors, description FROM movies WHERE id = ?";
         try (PreparedStatement st = connection.prepareStatement(sql)) {
-            st.setString(1, id);
+            st.setInt(1, id);
             try (ResultSet rs = st.executeQuery()) {
                 if (!rs.next()) return null;
                 return mapRow(rs);
@@ -29,7 +29,7 @@ public class PostgresMovieDao implements MovieDao {
 
     @Override
     public List<Movie> findAll(int limit) throws SQLException {
-        String sql = "SELECT id, title, year, genres, directors, actors, description FROM movies LIMIT ?";
+        String sql = "SELECT id, title, release_year, genres, directors, actors, description FROM movies LIMIT ?";
         List<Movie> list = new ArrayList<>();
         try (PreparedStatement st = connection.prepareStatement(sql)) {
             st.setInt(1, limit);
@@ -42,15 +42,15 @@ public class PostgresMovieDao implements MovieDao {
 
     @Override
     public void save(Movie movie) throws SQLException {
-        String sql = "INSERT INTO movies (id, title, year, genres, directors, actors, description) VALUES (?,?,?,?,?,?,?)";
+        String sql = "INSERT INTO movies (title, release_year, genres, directors, actors, description) VALUES (?,?,?,?,?,?)";
+
         try (PreparedStatement st = connection.prepareStatement(sql)) {
-            st.setString(1, movie.id);
-            st.setString(2, movie.title);
-            st.setInt(3, movie.year);
-            st.setString(4, String.join(",", movie.genres));
-            st.setString(5, String.join(",", movie.directors));
-            st.setString(6, String.join(",", movie.actors));
-            st.setString(7, movie.description);
+            st.setString(1, movie.title);
+            st.setInt(2, movie.year);
+            st.setString(3, String.join(",", movie.genres));
+            st.setString(4, String.join(",", movie.directors));
+            st.setString(5, String.join(",", movie.actors));
+            st.setString(6, movie.description);
             st.executeUpdate();
         }
     }
@@ -62,9 +62,9 @@ public class PostgresMovieDao implements MovieDao {
 
     private Movie mapRow(ResultSet rs) throws SQLException {
         return new Movie(
-                rs.getString("id"),
+                rs.getInt("id"),
                 rs.getString("title"),
-                rs.getInt("year"),
+                rs.getInt("release_year"),
                 split(rs.getString("genres")),
                 split(rs.getString("directors")),
                 split(rs.getString("actors")),

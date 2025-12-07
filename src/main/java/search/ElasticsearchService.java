@@ -1,75 +1,99 @@
 package search;
 
-import model.Movie;
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.IndexResponse;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper; // Для серіалізації/десеріалізації
+import co.elastic.clients.transport.ElasticsearchTransport;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
+import model.Movie; // Припускаємо, що клас Movie існує
 import org.apache.http.HttpHost;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
-public class ElasticsearchService {
+public class ElasticsearchService implements AutoCloseable {
 
-    public static class Hit {
-        public final String id;
+    public static class HitResult {
+        public final int id;
         public final float score;
 
-        public Hit(String id, float score) {
+        public HitResult(int id, float score) {
             this.id = id;
             this.score = score;
         }
     }
 
-    private final RestHighLevelClient client;
+    private final ElasticsearchClient client;
+    private final RestClient restClient;
     private final String INDEX = "movies";
 
-    public ElasticsearchService(String host, int port) {
-        this.client = new RestHighLevelClient(
-                RestClient.builder(new HttpHost(host, port, "http"))
-        );
+    public ElasticsearchService(String host, int port, String username, String password) {
+
+        final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(AuthScope.ANY,
+                new UsernamePasswordCredentials(username, password));
+
+        this.restClient = RestClient.builder(new HttpHost(host, port, "http"))
+                .setHttpClientConfigCallback(httpClientBuilder ->
+                        httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider))
+                .build();
+
+        ElasticsearchTransport transport = new RestClientTransport(
+                restClient, new JacksonJsonpMapper()); // JacksonJsonpMapper потрібен для JSON
+
+        this.client = new ElasticsearchClient(transport);
     }
 
     public void indexMovie(Movie movie) throws IOException {
-        Map<String, Object> json = new HashMap<>();
-        json.put("title", movie.title);
-        json.put("description", movie.description);
-        json.put("year", movie.year);
-        json.put("genres", movie.genres);
-
-        IndexRequest req = new IndexRequest(INDEX)
-                .id(movie.id)
-                .source(json);
-
-        client.index(req, RequestOptions.DEFAULT);
+        IndexResponse response = client.index(i -> i
+                .index(INDEX)
+                .id(String.valueOf(movie.id))
+                .document(movie) // Movie повинен бути POJO
+        );
     }
 
-    // пошук з BM25
-    public List<Hit> search(String query, int size) throws IOException {
-        SearchRequest req = new SearchRequest(INDEX);
+    public List<HitResult> search(String query, int size) throws IOException {
 
-        SearchSourceBuilder builder = new SearchSourceBuilder()
-                .query(QueryBuilders.matchQuery("description", query))
-                .size(size);
+        SearchResponse<Movie> resp = client.search(s -> s
+                        .index(INDEX)
+                        .query(q -> q
+                                .match(t -> t
+                                        .field("description")
+                                        .query(query)
+                                )
+                        )
+                        .size(size),
+                Movie.class
+        );
 
-        req.source(builder);
+        List<HitResult> out = new ArrayList<>();
 
-        SearchResponse resp = client.search(req, RequestOptions.DEFAULT);
+        for (Hit<Movie> hit : resp.hits().hits()) {
 
-        List<Hit> out = new ArrayList<>();
-        for (SearchHit h : resp.getHits().getHits()) {
-            out.add(new Hit(h.getId(), h.getScore())); // ← BM25 score
+            Double scoreObject = hit.score();
+
+            float score = (scoreObject != null) ? scoreObject.floatValue() : 0.0f;
+
+            out.add(new HitResult(
+                    Integer.parseInt(hit.id()),
+                    score
+            ));
         }
         return out;
     }
 
-    public void close() throws IOException {
-        client.close();
+    @Override
+    public void close () throws IOException {
+        if (restClient != null) {
+            restClient.close();
+        }
     }
 }

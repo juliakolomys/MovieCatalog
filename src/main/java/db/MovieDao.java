@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface MovieDao {
 
-    Movie findById(String id) throws SQLException;
+    Movie findById(int id) throws SQLException;
 
     List<Movie> findAll(int limit) throws SQLException;
 

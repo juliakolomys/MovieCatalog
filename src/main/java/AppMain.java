@@ -12,29 +12,34 @@ import java.util.List;
 public class AppMain {
     public static void main(String[] args) throws Exception {
 
-        Connection conn = DriverManager.getConnection(
-                "jdbc:postgresql://localhost:5432/moviedb",
-                "postgres",
-                "password"
+        String USERNAME = "julia";
+        String PASSWORD = "meAdmin34";
+        int movieId = 2;
+
+        // Використовуємо try-with-resources для автоматичного закриття conn та es
+        try (Connection conn = DriverManager.getConnection(
+                "jdbc:postgresql://localhost:5432/movieCatalog",
+                "app_user",
+                "12345678"
         );
+             ElasticsearchService es = new ElasticsearchService("localhost", 9200, USERNAME, PASSWORD))
+        {
 
-        MovieDao movieDao = new PostgresMovieDao(conn);
+            MovieDao movieDao = new PostgresMovieDao(conn);
+            EsCandidateGenerator gen = new EsCandidateGenerator(es);
+            RecommendationEngine engine = new RecommendationEngine(movieDao, gen);
 
-        ElasticsearchService es = new ElasticsearchService("localhost", 9200);
-        EsCandidateGenerator gen = new EsCandidateGenerator(es);
+            List<ScoredMovie> recs = engine.recommend(String.valueOf(movieId), 10);
 
-        RecommendationEngine engine = new RecommendationEngine(movieDao, gen);
+            System.out.println("Recommendations:");
+            for (ScoredMovie r : recs) {
+                System.out.printf("- %s (score %.3f)%n", r.movie.title, r.score);
+            }
 
-        String movieId = "tt0111161"; // Shawshank
-
-        List<ScoredMovie> recs = engine.recommend(movieId, 10);
-
-        System.out.println("Recommendations:");
-        for (ScoredMovie r : recs) {
-            System.out.printf("- %s (score %.3f)%n", r.movie.title, r.score);
+        } catch (Exception e) {
+            System.err.println("An error occurred during application execution:");
+            e.printStackTrace();
         }
 
-        es.close();
-        conn.close();
     }
 }

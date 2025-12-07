@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class Movie {
-    public final String id;
+    public final int id;
     public final String title;
     public final int year;
     public final List<String> genres;
@@ -12,7 +12,7 @@ public class Movie {
     public final List<String> actors;
     public final String description;
 
-    public Movie(String id, String title, int year,
+    public Movie(int id, String title, int year,
                  List<String> genres, List<String> directors,
                  List<String> actors, String description) {
         this.id = id;
