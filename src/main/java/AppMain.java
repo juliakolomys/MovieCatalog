@@ -16,7 +16,7 @@ public class AppMain {
         String PASSWORD = "meAdmin34";
         int movieId = 2;
 
-        // Використовуємо try-with-resources для автоматичного закриття conn та es
+
         try (Connection conn = DriverManager.getConnection(
                 "jdbc:postgresql://localhost:5432/movieCatalog",
                 "app_user",

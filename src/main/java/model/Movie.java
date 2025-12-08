@@ -1,5 +1,8 @@
 package model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -12,9 +15,15 @@ public class Movie {
     public final List<String> actors;
     public final String description;
 
-    public Movie(int id, String title, int year,
-                 List<String> genres, List<String> directors,
-                 List<String> actors, String description) {
+    @JsonCreator
+    public Movie(
+            @JsonProperty("id") int id,
+            @JsonProperty("title") String title,
+            @JsonProperty("year") int year,
+            @JsonProperty("genres") List<String> genres,
+            @JsonProperty("directors") List<String> directors,
+            @JsonProperty("actors") List<String> actors,
+            @JsonProperty("description") String description) {
         this.id = id;
         this.title = title;
         this.year = year;
