@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Пошук та Рекомендації Фільмів (Elasticsearch/Java)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        #search-form {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        #search-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px 0 0 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result-item {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .title {
+            font-weight: bold;
+        }
+        .score {
+            color: #555;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎬 Пошук Фільмів</h1>
+
+    <form id="search-form">
+        <input type="text" id="search-input" placeholder="Введіть назву або опис фільму..." required>
+        <button type="submit">Пошук</button>
+    </form>
+
+    <h2>Результати:</h2>
+
+    <div id="results">
+        <p>Введіть запит вище, щоб знайти рекомендації.</p>
+    </div>
+
+    <p id="status-message" style="color: red;"></p>
+</div>
+
+<script>
+    document.getElementById('search-form').addEventListener('submit', function(e) {
+        e.preventDefault(); // Запобігти стандартній відправці форми
+
+        const query = document.getElementById('search-input').value.trim();
+        const resultsContainer = document.getElementById('results');
+        const statusMessage = document.getElementById('status-message');
+
+        resultsContainer.innerHTML = 'Завантаження...';
+        statusMessage.textContent = '';
+
+        if (query === "") {
+            resultsContainer.innerHTML = '<p>Будь ласка, введіть пошуковий запит.</p>';
+            return;
+        }
+
+        // URL для виклику вашого Java SearchHandler
+        const apiUrl = `http://localhost:8080/api/search?q=${encodeURIComponent(query)}`;
+
+        fetch(apiUrl)
+            .then(response => {
+                // Перевірка статусу HTTP, якщо він не 200 (OK)
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || `HTTP error! status: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                resultsContainer.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    resultsContainer.innerHTML = '<p>Фільми не знайдено за вашим запитом.</p>';
+                    return;
+                }
+
+                // Обробка та відображення результатів
+                data.forEach(item => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'result-item';
+
+                    // Використовуємо поля з об'єкта ScoredMovie (item)
+                    // item.movie.title - назва фільму
+                    // item.score - оцінка релевантності
+
+                    const titleSpan = document.createElement('span');
+                    titleSpan.className = 'title';
+                    titleSpan.textContent = item.movie ? item.movie.title : 'Назва відсутня';
+
+                    const scoreSpan = document.createElement('span');
+                    scoreSpan.className = 'score';
+                    scoreSpan.textContent = `Релевантність: ${item.score ? item.score.toFixed(4) : 'N/A'}`;
+
+                    resultDiv.appendChild(titleSpan);
+                    resultDiv.appendChild(scoreSpan);
+                    resultsContainer.appendChild(resultDiv);
+                });
+            })
+            .catch(error => {
+                // Відображення помилок сервера або мережі
+                console.error("Помилка під час пошуку:", error);
+                statusMessage.textContent = `Помилка: Не вдалося з'єднатися з сервером. Переконайтеся, що Java-сервер працює на порту 8080. Деталі: ${error.message}`;
+                resultsContainer.innerHTML = '';
+            });
+    });
+</script>
+
+</body>
+</html>

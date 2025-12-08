@@ -1,23 +1,24 @@
 package search;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.IndexRequest;
 import co.elastic.clients.elasticsearch.core.IndexResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
-import co.elastic.clients.json.jackson.JacksonJsonpMapper; // Для серіалізації/десеріалізації
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
-import model.Movie; // Припускаємо, що клас Movie існує
+import model.Movie;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class ElasticsearchService implements AutoCloseable {
 
@@ -47,17 +48,17 @@ public class ElasticsearchService implements AutoCloseable {
                 .build();
 
         ElasticsearchTransport transport = new RestClientTransport(
-                restClient, new JacksonJsonpMapper()); // JacksonJsonpMapper потрібен для JSON
+                restClient, new JacksonJsonpMapper());
 
         this.client = new ElasticsearchClient(transport);
     }
-
     public void indexMovie(Movie movie) throws IOException {
-        IndexResponse response = client.index(i -> i
+        IndexRequest<Movie> request = IndexRequest.of(i -> i
                 .index(INDEX)
                 .id(String.valueOf(movie.id))
-                .document(movie) // Movie повинен бути POJO
+                .document(movie)
         );
+        client.index(request);
     }
 
     public List<HitResult> search(String query, int size) throws IOException {
@@ -65,29 +66,59 @@ public class ElasticsearchService implements AutoCloseable {
         SearchResponse<Movie> resp = client.search(s -> s
                         .index(INDEX)
                         .query(q -> q
-                                .match(t -> t
-                                        .field("description")
+                                .multiMatch(m -> m
+                                        .fields("title3", "genres2", "description")
                                         .query(query)
+                                        .operator(co.elastic.clients.elasticsearch._types.query_dsl.Operator.And)
                                 )
                         )
                         .size(size),
                 Movie.class
         );
 
-        List<HitResult> out = new ArrayList<>();
+        System.out.println("DEBUG: ES search query for '" + query + "' took " + resp.took() + " ms.");
+
+        List<HitResult> results = new ArrayList<>();
 
         for (Hit<Movie> hit : resp.hits().hits()) {
 
-            Double scoreObject = hit.score();
 
+            Double scoreObject = hit.score();
             float score = (scoreObject != null) ? scoreObject.floatValue() : 0.0f;
 
-            out.add(new HitResult(
-                    Integer.parseInt(hit.id()),
-                    score
-            ));
+            int id = Integer.parseInt(hit.id());
+
+            results.add(new HitResult(id, score));
+
         }
-        return out;
+
+        return results;
+    }
+
+
+    public Optional<Integer> findIdByTitle(String titleQuery) throws IOException {
+
+        SearchResponse<Movie> resp = client.search(s -> s
+                        .index(INDEX)
+                        .query(q -> q
+                                .multiMatch(mm -> mm
+                                        .fields("title")
+                                        .query(titleQuery)
+                                        .fuzziness("AUTO")
+                                )
+                        )
+                        .size(1),
+                Movie.class
+        );
+
+        if (!resp.hits().hits().isEmpty()) {
+
+            Movie movie = resp.hits().hits().get(0).source();
+            if (movie != null) {
+                return Optional.of(movie.id);
+            }
+        }
+        return Optional.empty();
     }
 
     @Override

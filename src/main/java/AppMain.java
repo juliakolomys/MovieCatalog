@@ -3,7 +3,7 @@ import db.PostgresMovieDao;
 import model.ScoredMovie;
 import search.ElasticsearchService;
 import search.EsCandidateGenerator;
-import service.RecommendationEngine;
+import search.RecommendationEngine;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -24,6 +24,8 @@ public class AppMain {
         );
              ElasticsearchService es = new ElasticsearchService("localhost", 9200, USERNAME, PASSWORD))
         {
+
+
 
             MovieDao movieDao = new PostgresMovieDao(conn);
             EsCandidateGenerator gen = new EsCandidateGenerator(es);
