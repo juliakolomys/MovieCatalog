@@ -1,8 +1,8 @@
 package search;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import co.elastic.clients.elasticsearch.core.IndexRequest;
-import co.elastic.clients.elasticsearch.core.IndexResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
@@ -15,6 +15,7 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +53,7 @@ public class ElasticsearchService implements AutoCloseable {
 
         this.client = new ElasticsearchClient(transport);
     }
+
     public void indexMovie(Movie movie) throws IOException {
         IndexRequest<Movie> request = IndexRequest.of(i -> i
                 .index(INDEX)
@@ -59,7 +61,9 @@ public class ElasticsearchService implements AutoCloseable {
                 .document(movie)
         );
         client.index(request);
+        System.out.println("Indexed movie: " + movie.title + " (ID=" + movie.id + ")");
     }
+
 
     public List<HitResult> search(String query, int size) throws IOException {
 
@@ -67,9 +71,10 @@ public class ElasticsearchService implements AutoCloseable {
                         .index(INDEX)
                         .query(q -> q
                                 .multiMatch(m -> m
-                                        .fields("title3", "genres2", "description")
+                                        .fields("title^3", "genres^2", "description")
                                         .query(query)
-                                        .operator(co.elastic.clients.elasticsearch._types.query_dsl.Operator.And)
+                                        .fuzziness("AUTO")
+                                        .operator(Operator.Or)
                                 )
                         )
                         .size(size),
@@ -81,30 +86,23 @@ public class ElasticsearchService implements AutoCloseable {
         List<HitResult> results = new ArrayList<>();
 
         for (Hit<Movie> hit : resp.hits().hits()) {
-
-
             Double scoreObject = hit.score();
             float score = (scoreObject != null) ? scoreObject.floatValue() : 0.0f;
-
             int id = Integer.parseInt(hit.id());
-
             results.add(new HitResult(id, score));
-
         }
 
         return results;
     }
-
 
     public Optional<Integer> findIdByTitle(String titleQuery) throws IOException {
 
         SearchResponse<Movie> resp = client.search(s -> s
                         .index(INDEX)
                         .query(q -> q
-                                .multiMatch(mm -> mm
-                                        .fields("title")
+                                .matchPhrase(mp -> mp
+                                        .field("title")
                                         .query(titleQuery)
-                                        .fuzziness("AUTO")
                                 )
                         )
                         .size(1),
@@ -112,7 +110,6 @@ public class ElasticsearchService implements AutoCloseable {
         );
 
         if (!resp.hits().hits().isEmpty()) {
-
             Movie movie = resp.hits().hits().get(0).source();
             if (movie != null) {
                 return Optional.of(movie.id);

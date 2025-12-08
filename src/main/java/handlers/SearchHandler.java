@@ -1,85 +1,100 @@
 package handlers;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import model.ScoredMovie;
 import search.RecommendationEngine;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
-import java.util.List;
-import java.util.Optional;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
-    public class SearchHandler implements HttpHandler {
+public class SearchHandler implements HttpHandler {
 
-        private final RecommendationEngine engine;
-        private final ObjectMapper mapper = new ObjectMapper();
+    private final RecommendationEngine engine;
+    private final ObjectMapper mapper = new ObjectMapper();
 
-        public SearchHandler(RecommendationEngine engine) {
-            this.engine = engine;
+    public SearchHandler(RecommendationEngine engine) {
+        this.engine = engine;
+    }
+
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.sendResponseHeaders(405, -1);
+            return;
         }
 
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
+        URI uri = exchange.getRequestURI();
+        String rawQuery = uri.getRawQuery();
+        String q = extractQueryParam(rawQuery, "q");
+        if (q == null || q.isBlank()) {
+            sendJson(exchange, Collections.emptyList());
+            return;
+        }
 
-            exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+        try {
+            Integer movieId = engine.getCandidateGenerator()
+                    .getElasticsearchService()
+                    .findIdByTitle(q)
+                    .orElse(null);
 
-            if (!exchange.getRequestMethod().equals("GET")) {
-                sendResponse(exchange, 405, "Method Not Allowed");
+            if (movieId == null) {
+                sendJson(exchange, Collections.emptyList());
                 return;
             }
 
-            URI uri = exchange.getRequestURI();
-            String query = extractQueryParam(uri, "q");
-
-            if (query == null || query.isBlank()) {
-                sendResponse(exchange, 400, "Query parameter 'q' is missing.");
+            // Повертаємо список: перший — main з score, далі recommendations
+            List<ScoredMovie> moviesWithScores = engine.recommendWithMain(String.valueOf(movieId), 5);
+            if (moviesWithScores == null || moviesWithScores.isEmpty()) {
+                sendJson(exchange, Collections.emptyList());
                 return;
             }
 
-            try {
-                List<ScoredMovie> results;
-
-                Optional<Integer> initialMovieId = engine.getElasticsearchService().findIdByTitle(query);
-
-                if (initialMovieId.isPresent()) {
-                    results = engine.recommend(String.valueOf(initialMovieId.get()), 10);
-                } else {
-                    results = List.of();
-                }
-
-                String jsonResponse = mapper.writeValueAsString(results);
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                sendResponse(exchange, 200, jsonResponse);
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendResponse(exchange, 500, "{\"error\": \"" + e.getMessage() + "\"}");
+            ScoredMovie main = moviesWithScores.get(0);
+            List<Map<String, Object>> recList = new ArrayList<>();
+            for (int i = 1; i < moviesWithScores.size(); i++) {
+                ScoredMovie s = moviesWithScores.get(i);
+                Map<String, Object> m = new HashMap<>();
+                m.put("movie", s.movie);
+                m.put("score", s.score);
+                recList.add(m);
             }
-        }
 
-        private String extractQueryParam(URI uri, String paramName) {
-            String query = uri.getQuery();
-            if (query != null) {
-                for (String param : query.split("&")) {
-                    if (param.startsWith(paramName + "=")) {
-                        try {
-                            return java.net.URLDecoder.decode(param.substring(paramName.length() + 1), "UTF-8");
-                        } catch (Exception ignored) {}
-                    }
-                }
-            }
-            return null;
-        }
+            Map<String, Object> responseObj = new HashMap<>();
+            responseObj.put("movie", main.movie);
+            responseObj.put("score", main.score);
+            responseObj.put("recommendations", recList);
 
-        private void sendResponse(HttpExchange exchange, int statusCode, String response) throws IOException {
-            long length = response != null ? response.length() : 0;
-            exchange.sendResponseHeaders(statusCode, length);
-            if (response != null) {
-                try (OutputStream os = exchange.getResponseBody()) {
-                    os.write(response.getBytes("UTF-8"));
-                }
-            }
+            sendJson(exchange, Collections.singletonList(responseObj));
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            exchange.sendResponseHeaders(500, -1);
         }
     }
+
+    private String extractQueryParam(String rawQuery, String key) {
+        if (rawQuery == null || rawQuery.isBlank()) return null;
+        for (String part : rawQuery.split("&")) {
+            String[] kv = part.split("=", 2);
+            if (kv.length == 2 && kv[0].equals(key)) {
+                return URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
+            }
+        }
+        return null;
+    }
+
+    private void sendJson(HttpExchange exchange, Object obj) throws IOException {
+        byte[] bytes = mapper.writeValueAsBytes(obj);
+        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+        exchange.sendResponseHeaders(200, bytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
+        }
+    }
+}

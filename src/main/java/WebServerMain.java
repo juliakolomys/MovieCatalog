@@ -3,7 +3,6 @@ import db.MovieDao;
 import db.PostgresMovieDao;
 import handlers.StaticFileHandler;
 import model.Movie;
-import model.ScoredMovie;
 import search.ElasticsearchService;
 import search.EsCandidateGenerator;
 import search.RecommendationEngine;
@@ -37,25 +36,11 @@ public class WebServerMain {
             EsCandidateGenerator gen = new EsCandidateGenerator(es);
             RecommendationEngine engine = new RecommendationEngine(movieDao, gen);
 
+
             List<Movie> allMovies = movieDao.findAll(100000);
-            if (allMovies.isEmpty()) {
-                System.err.println("База порожня. Немає фільмів для індексації.");
-            } else {
-                System.out.println("Starting indexing " + allMovies.size() + " movies...");
-                for (Movie movie : allMovies) {
-                    es.indexMovie(movie);
-                }
-                System.out.println("Indexing complete.");
-            }
-
-
-            String testTitle = "Harry Potter and the Sorcerer's Stone";
-            List<ElasticsearchService.HitResult> hits = es.search(testTitle, 5);
-            System.out.println("Search hits for '" + testTitle + "': " + hits.size());
-            for (ElasticsearchService.HitResult hit : hits) {
-                System.out.println("ID: " + hit.id + ", Score: " + hit.score);
-            }
-
+            System.out.println("Starting indexing " + allMovies.size() + " movies...");
+            for (Movie movie : allMovies) es.indexMovie(movie);
+            System.out.println("Indexing complete.");
 
             server = HttpServer.create(new InetSocketAddress("127.0.0.1", PORT), 0);
             server.createContext("/api/search", new SearchHandler(engine));
@@ -68,7 +53,6 @@ public class WebServerMain {
             System.out.println("Open: http://localhost:" + PORT + "/index.html");
 
         } catch (Exception e) {
-            System.err.println("Failed to initialize server:");
             e.printStackTrace();
             if (server != null) server.stop(0);
         }
