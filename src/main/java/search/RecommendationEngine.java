@@ -3,6 +3,7 @@ package search;
 import db.MovieDao;
 import model.Movie;
 import model.ScoredMovie;
+import model.SearchResponse;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -19,11 +20,12 @@ public class RecommendationEngine {
         this.candidateGenerator = candidateGenerator;
     }
 
-
-    public List<ScoredMovie> recommendWithMain(String stringId, int limit) throws IOException, SQLException {
+    public SearchResponse recommendWithMain(String stringId, int limit) throws IOException, SQLException {
         int initialMovieId = Integer.parseInt(stringId);
         Movie mainMovie = movieDao.findById(initialMovieId);
-        if (mainMovie == null) return List.of();
+        if (mainMovie == null) {
+            return SearchResponse.error("Фільм не знайдено");
+        }
 
         StringBuilder sb = new StringBuilder();
         if (mainMovie.title != null && !mainMovie.title.isBlank()) {
@@ -42,20 +44,19 @@ public class RecommendationEngine {
         System.out.println("DEBUG: recommendWithMain primaryQuery='" + primaryQuery + "' hits=" + (hits == null ? 0 : hits.size()));
 
         List<ScoredMovie> recommendations = new ArrayList<>();
-        float mainScore = 0.0f;
-
+        double mainScore = 0.0;
 
         if (hits != null) {
             for (ElasticsearchService.HitResult hit : hits) {
                 System.out.println("DEBUG: candidate id=" + hit.id + " score=" + hit.score);
                 if (hit.id == initialMovieId) {
                     mainScore = hit.score;
-
                 }
             }
         }
 
-        if (mainScore == 0.0f && mainMovie.title != null && !mainMovie.title.isBlank()) {
+
+        if (mainScore == 0.0 && mainMovie.title != null && !mainMovie.title.isBlank()) {
             try {
                 List<ElasticsearchService.HitResult> titleHits = candidateGenerator.generate(mainMovie.title, 5);
                 System.out.println("DEBUG: title-search hits=" + (titleHits == null ? 0 : titleHits.size()) + " for title='" + mainMovie.title + "'");
@@ -67,7 +68,7 @@ public class RecommendationEngine {
                             break;
                         }
                     }
-                    if (mainScore == 0.0f) {
+                    if (mainScore == 0.0) {
                         mainScore = titleHits.get(0).score;
                     }
                 }
@@ -75,7 +76,6 @@ public class RecommendationEngine {
                 System.err.println("DEBUG: title-search fallback failed: " + ex.getMessage());
             }
         }
-
 
         if (hits != null) {
             for (ElasticsearchService.HitResult hit : hits) {
@@ -96,7 +96,9 @@ public class RecommendationEngine {
                     for (ElasticsearchService.HitResult hit : more) {
                         if (hit.id == initialMovieId) continue;
                         boolean already = false;
-                        for (ScoredMovie sm : recommendations) if (sm.movie.id == hit.id) { already = true; break; }
+                        for (ScoredMovie sm : recommendations) {
+                            if (sm.movie.id == hit.id) { already = true; break; }
+                        }
                         if (already) continue;
                         Movie m = movieDao.findById(hit.id);
                         if (m != null) recommendations.add(new ScoredMovie(m, hit.score));
@@ -108,11 +110,10 @@ public class RecommendationEngine {
             }
         }
 
-        List<ScoredMovie> result = new ArrayList<>();
-        result.add(new ScoredMovie(mainMovie, mainScore));
-        result.addAll(recommendations);
         System.out.println("DEBUG: recommendWithMain -> mainScore=" + mainScore + ", recCount=" + recommendations.size());
-        return result;
+
+
+        return SearchResponse.ok(mainMovie, mainScore, recommendations);
     }
 
     public MovieDao getMovieDao() {
