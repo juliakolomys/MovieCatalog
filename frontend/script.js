@@ -2,6 +2,7 @@ const form = document.getElementById('search-form');
 const input = document.getElementById('search-input');
 const statusDiv = document.getElementById('status');
 const resultsDiv = document.getElementById('results');
+const suggestionsList = document.getElementById('search-suggestions');
 
 form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
@@ -36,7 +37,7 @@ async function doSearch() {
             return;
         }
 
-        // Головний фільм
+
         const mainHtml = document.createElement('div');
         mainHtml.className = 'result-card';
 
@@ -71,7 +72,6 @@ async function doSearch() {
         resultsDiv.innerHTML = '';
         resultsDiv.appendChild(mainHtml);
 
-        // Рекомендації
         const recHeader = document.createElement('h3');
         recHeader.style.marginTop = '14px';
         recHeader.textContent = 'Схожі фільми:';
@@ -114,3 +114,31 @@ async function doSearch() {
         resultsDiv.innerHTML = '<div class="empty">Помилка при отриманні результатів.</div>';
     }
 }
+
+input.addEventListener('input', async () => {
+    const q = input.value.trim();
+    suggestionsList.innerHTML = '';
+    if (q.length < 2) return;
+
+    try {
+        const resp = await fetch(`/api/suggest?q=${encodeURIComponent(q)}`);
+        const suggestions = await resp.json();
+
+        suggestions.forEach(title => {
+            const li = document.createElement('li');
+            li.textContent = title;
+            li.addEventListener('click', () => {
+                input.value = title;
+                suggestionsList.innerHTML = '';
+                doSearch();
+            });
+            suggestionsList.appendChild(li);
+        });
+    } catch (err) {
+        console.error('Suggest error', err);
+    }
+});
+
+input.addEventListener('blur', () => {
+    setTimeout(() => suggestionsList.innerHTML = '', 200);
+});
