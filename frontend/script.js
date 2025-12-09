@@ -4,10 +4,50 @@ const statusDiv = document.getElementById('status');
 const resultsDiv = document.getElementById('results');
 const suggestionsList = document.getElementById('search-suggestions');
 
-form.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    await doSearch();
-});
+
+const params = new URLSearchParams(window.location.search);
+const directorName = params.get("name");
+
+
+if (directorName) {
+    document.title = `Фільми режисера: ${directorName}`;
+    loadMoviesByDirector(directorName);
+} else {
+
+    form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        await doSearch();
+    });
+
+    input.addEventListener('input', async () => {
+        const q = input.value.trim();
+        suggestionsList.innerHTML = '';
+        if (q.length < 2) return;
+
+        try {
+            const resp = await fetch(`/api/suggest?q=${encodeURIComponent(q)}`);
+            const suggestions = await resp.json();
+
+            suggestions.forEach(title => {
+                const li = document.createElement('li');
+                li.textContent = title;
+                li.addEventListener('click', () => {
+                    input.value = title;
+                    suggestionsList.innerHTML = '';
+                    doSearch();
+                });
+                suggestionsList.appendChild(li);
+            });
+        } catch (err) {
+            console.error('Suggest error', err);
+        }
+    });
+
+    input.addEventListener('blur', () => {
+        setTimeout(() => suggestionsList.innerHTML = '', 200);
+    });
+}
+
 
 async function doSearch() {
     const q = input.value.trim();
@@ -37,7 +77,6 @@ async function doSearch() {
             return;
         }
 
-
         const mainHtml = document.createElement('div');
         mainHtml.className = 'result-card';
 
@@ -59,7 +98,17 @@ async function doSearch() {
         const meta = document.createElement('div');
         meta.className = 'meta';
         const genresText = Array.isArray(data.movie.genres) ? data.movie.genres.join(', ') : '';
-        meta.innerHTML = `<strong>Жанри:</strong> ${genresText || '—'}`;
+        const directors = Array.isArray(data.movie.directors) ? data.movie.directors : [];
+
+        const directorLinks = directors.map(name => {
+            const encoded = encodeURIComponent(name);
+            return `<a href="/director.html?name=${encoded}" class="director-link">${name}</a>`;
+        }).join(', ');
+
+        meta.innerHTML = `
+            <strong>Жанри:</strong> ${genresText || '—'}<br/>
+            <strong>Режисер:</strong> ${directorLinks || '—'}
+        `;
         mainHtml.appendChild(meta);
 
         if (data.movie.description) {
@@ -115,30 +164,40 @@ async function doSearch() {
     }
 }
 
-input.addEventListener('input', async () => {
-    const q = input.value.trim();
-    suggestionsList.innerHTML = '';
-    if (q.length < 2) return;
 
-    try {
-        const resp = await fetch(`/api/suggest?q=${encodeURIComponent(q)}`);
-        const suggestions = await resp.json();
+async function loadMoviesByDirector(name) {
+    const resp = await fetch(`/api/director?name=${encodeURIComponent(name)}`);
+    const movies = await resp.json();
 
-        suggestions.forEach(title => {
-            const li = document.createElement('li');
-            li.textContent = title;
-            li.addEventListener('click', () => {
-                input.value = title;
-                suggestionsList.innerHTML = '';
-                doSearch();
-            });
-            suggestionsList.appendChild(li);
-        });
-    } catch (err) {
-        console.error('Suggest error', err);
+    if (!Array.isArray(movies) || movies.length === 0) {
+        resultsDiv.innerHTML = `<div class="empty">Фільми не знайдено для режисера "${name}".</div>`;
+        return;
     }
-});
 
-input.addEventListener('blur', () => {
-    setTimeout(() => suggestionsList.innerHTML = '', 200);
-});
+    resultsDiv.innerHTML = '';
+    movies.forEach(m => {
+        const card = document.createElement("div");
+        card.className = "result-card";
+
+        const title = document.createElement("h2");
+        title.className = "title";
+        title.textContent = m.title || "Без назви";
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const genres = Array.isArray(m.genres) ? m.genres.join(", ") : "";
+        meta.innerHTML = `<strong>Жанри:</strong> ${genres || "—"} &nbsp; • &nbsp; <strong>Рік:</strong> ${m.year || "—"}`;
+
+        card.appendChild(title);
+        card.appendChild(meta);
+
+        if (m.description) {
+            const desc = document.createElement("div");
+            desc.className = "desc";
+            desc.textContent = m.description;
+            card.appendChild(desc);
+        }
+
+        resultsDiv.appendChild(card);
+    });
+}

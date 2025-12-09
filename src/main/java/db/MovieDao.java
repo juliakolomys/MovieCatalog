@@ -14,4 +14,6 @@ public interface MovieDao {
     void save(Movie movie) throws SQLException;
 
     void saveAll(List<Movie> movies) throws SQLException;
+
+    List<Movie> findByDirectorName(String name) throws SQLException;
 }

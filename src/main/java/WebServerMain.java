@@ -1,6 +1,7 @@
 import com.sun.net.httpserver.HttpServer;
 import db.MovieDao;
 import db.PostgresMovieDao;
+import handlers.DirectorHandler;
 import handlers.StaticFileHandler;
 import handlers.SuggestHandler;
 import model.Movie;
@@ -47,6 +48,8 @@ public class WebServerMain {
             server.createContext("/api/search", new SearchHandler(engine));
             server.createContext("/", new StaticFileHandler("frontend"));
             server.createContext("/api/suggest", new SuggestHandler(movieDao));
+            server.createContext("/api/director", new DirectorHandler(movieDao));
+
 
 
             server.setExecutor(Executors.newFixedThreadPool(10));

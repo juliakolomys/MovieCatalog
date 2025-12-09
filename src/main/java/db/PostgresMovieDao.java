@@ -72,6 +72,28 @@ public class PostgresMovieDao implements MovieDao {
         );
     }
 
+    public List<Movie> findByDirectorName(String name) throws SQLException {
+        String sql = """
+        SELECT m.id, m.title, m.release_year, m.genres, m.directors, m.actors, m.description
+        FROM movies m
+        JOIN movie_directors md ON m.id = md.movie_id
+        JOIN directors d ON md.director_id = d.id
+        WHERE LOWER(d.name) = LOWER(?)
+        ORDER BY m.release_year DESC
+        LIMIT 100
+    """;
+
+        List<Movie> list = new ArrayList<>();
+        try (PreparedStatement st = connection.prepareStatement(sql)) {
+            st.setString(1, name);
+            try (ResultSet rs = st.executeQuery()) {
+                while (rs.next()) list.add(mapRow(rs));
+            }
+        }
+        return list;
+    }
+
+
     private List<String> split(String s) {
         if (s == null || s.isBlank()) return List.of();
         return Arrays.asList(s.split(","));

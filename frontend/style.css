@@ -24,3 +24,11 @@ form { margin-bottom: 20px; }
     background: #f0f0f0;
 }
 
+.director-link {
+    color: var(--accent);
+    text-decoration: none;
+}
+.director-link:hover {
+    text-decoration: underline;
+}
+
