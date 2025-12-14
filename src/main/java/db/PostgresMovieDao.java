@@ -1,19 +1,23 @@
 package db;
 
 import model.Movie;
-
+import utils.StringListConverter;
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class PostgresMovieDao implements MovieDao {
 
     private final Connection connection;
+    private final MovieRowMapper mapper;
+    private final StringListConverter converter;
 
-    public PostgresMovieDao(Connection connection) {
+    public PostgresMovieDao(Connection connection, MovieRowMapper mapper, StringListConverter converter) {
         this.connection = connection;
+        this.mapper = mapper;
+        this.converter = converter;
     }
+
 
     @Override
     public Movie findById(int id) throws SQLException {
@@ -22,7 +26,7 @@ public class PostgresMovieDao implements MovieDao {
             st.setInt(1, id);
             try (ResultSet rs = st.executeQuery()) {
                 if (!rs.next()) return null;
-                return mapRow(rs);
+                return mapper.mapRow(rs);
             }
         }
     }
@@ -34,7 +38,7 @@ public class PostgresMovieDao implements MovieDao {
         try (PreparedStatement st = connection.prepareStatement(sql)) {
             st.setInt(1, limit);
             try (ResultSet rs = st.executeQuery()) {
-                while (rs.next()) list.add(mapRow(rs));
+                while (rs.next()) list.add(mapper.mapRow(rs));
             }
         }
         return list;
@@ -47,9 +51,9 @@ public class PostgresMovieDao implements MovieDao {
         try (PreparedStatement st = connection.prepareStatement(sql)) {
             st.setString(1, movie.title);
             st.setInt(2, movie.year);
-            st.setString(3, String.join(",", movie.genres));
-            st.setString(4, String.join(",", movie.directors));
-            st.setString(5, String.join(",", movie.actors));
+            st.setString(3, converter.join(movie.genres));
+            st.setString(4, converter.join(movie.directors));
+            st.setString(5, converter.join(movie.actors));
             st.setString(6, movie.description);
             st.executeUpdate();
         }
@@ -60,18 +64,7 @@ public class PostgresMovieDao implements MovieDao {
         for (Movie m : movies) save(m);
     }
 
-    private Movie mapRow(ResultSet rs) throws SQLException {
-        return new Movie(
-                rs.getInt("id"),
-                rs.getString("title"),
-                rs.getInt("release_year"),
-                split(rs.getString("genres")),
-                split(rs.getString("directors")),
-                split(rs.getString("actors")),
-                rs.getString("description")
-        );
-    }
-
+    @Override
     public List<Movie> findByDirectorName(String name) throws SQLException {
         String sql = """
         SELECT m.id, m.title, m.release_year, m.genres, m.directors, m.actors, m.description
@@ -87,15 +80,9 @@ public class PostgresMovieDao implements MovieDao {
         try (PreparedStatement st = connection.prepareStatement(sql)) {
             st.setString(1, name);
             try (ResultSet rs = st.executeQuery()) {
-                while (rs.next()) list.add(mapRow(rs));
+                while (rs.next()) list.add(mapper.mapRow(rs));
             }
         }
         return list;
-    }
-
-
-    private List<String> split(String s) {
-        if (s == null || s.isBlank()) return List.of();
-        return Arrays.asList(s.split(","));
     }
 }

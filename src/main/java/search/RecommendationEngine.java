@@ -24,7 +24,7 @@ public class RecommendationEngine {
         int initialMovieId = Integer.parseInt(stringId);
         Movie mainMovie = movieDao.findById(initialMovieId);
         if (mainMovie == null) {
-            return SearchResponse.error("Фільм не знайдено");
+            return SearchResponse.error("Movie not found");
         }
 
         StringBuilder sb = new StringBuilder();
