@@ -85,4 +85,22 @@ public class PostgresMovieDao implements MovieDao {
         }
         return list;
     }
+
+    @Override
+    public List<String> findTitlesByPrefix(String prefix, int limit) throws SQLException {
+        String sql = "SELECT title FROM movies WHERE title ILIKE ? LIMIT ?";
+        List<String> titles = new ArrayList<>();
+
+        try (PreparedStatement st = connection.prepareStatement(sql)) {
+            st.setString(1, prefix + "%");
+            st.setInt(2, limit);
+
+            try (ResultSet rs = st.executeQuery()) {
+                while (rs.next()) {
+                    titles.add(rs.getString("title"));
+                }
+            }
+        }
+        return titles;
+    }
 }

@@ -2,6 +2,7 @@ package search;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
+import co.elastic.clients.elasticsearch._types.query_dsl.PrefixQuery;
 import co.elastic.clients.elasticsearch.core.IndexRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
@@ -93,6 +94,30 @@ public class ElasticsearchService implements AutoCloseable {
         }
 
         return results;
+    }
+
+    public List<String> searchTitlesByPrefix(String prefix, int size) throws IOException {
+
+        PrefixQuery prefixQuery = PrefixQuery.of(p -> p
+                .field("title.keyword")
+                .value(prefix.toLowerCase())
+        );
+
+        SearchResponse<Movie> resp = client.search(s -> s
+                        .index(INDEX)
+                        .query(q -> q.prefix(prefixQuery))
+                        .source(src -> src.filter(f -> f.includes("title")))
+                        .size(size),
+                Movie.class
+        );
+
+        List<String> titles = new ArrayList<>();
+        for (Hit<Movie> hit : resp.hits().hits()) {
+            if (hit.source() != null && hit.source().title != null) {
+                titles.add(hit.source().title);
+            }
+        }
+        return titles;
     }
 
     public Optional<Integer> findIdByTitle(String titleQuery) throws IOException {

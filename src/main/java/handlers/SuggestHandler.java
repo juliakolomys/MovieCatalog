@@ -1,26 +1,23 @@
 package handlers;
 
 import com.sun.net.httpserver.HttpExchange;
-import db.MovieDao;
+import search.ElasticsearchService;
+import model.SearchResponse;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.List;
-import java.util.stream.Collectors;
-
 
 public class SuggestHandler extends BaseHttpHandler {
 
-    private final MovieDao movieDao;
+    private final ElasticsearchService esService;
 
-    public SuggestHandler(MovieDao movieDao) {
-        this.movieDao = movieDao;
+
+    public SuggestHandler(ElasticsearchService esService) {
+        this.esService = esService;
     }
-
 
     @Override
     protected void handleGet(HttpExchange exchange) throws IOException {
         String rawQuery = exchange.getRequestURI().getRawQuery();
-
         String q = extractQueryParam(rawQuery, "q");
 
         if (q == null || q.isBlank()) {
@@ -29,18 +26,13 @@ public class SuggestHandler extends BaseHttpHandler {
         }
 
         try {
-            List<model.Movie> all = movieDao.findAll(1000);
-            List<String> suggestions = all.stream()
-                    .map(m -> m.title)
-                    .filter(t -> t != null && t.toLowerCase().startsWith(q.toLowerCase()))
-                    .limit(10)
-                    .collect(Collectors.toList());
+            List<String> suggestions = esService.searchTitlesByPrefix(q, 10);
 
             sendJson(exchange, suggestions);
 
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-            sendJson(exchange, List.of());
+            sendJson(exchange, SearchResponse.error("Server inner error"));
         }
     }
 }
