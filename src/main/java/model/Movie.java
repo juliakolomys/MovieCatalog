@@ -48,13 +48,12 @@ public class Movie {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Movie)) return false;
-        Movie movie = (Movie) o;
+        if (!(o instanceof Movie movie)) return false;
         return Objects.equals(id, movie.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return Integer.hashCode(id);
     }
 }

@@ -1,142 +1,28 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="utf-8" />
-    <title>Пошук та рекомендації фільмів</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <style>
-        :root {
-            --card-bg: #ffffff;
-            --muted: #666;
-            --accent: #007bff;
-        }
-        body {
-            font-family: Inter, Arial, sans-serif;
-            background: #f4f6f8;
-            margin: 0;
-            padding: 24px;
-            color: #222;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: var(--card-bg);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.06);
-        }
-        h1 {
-            margin: 0 0 12px;
-            font-size: 22px;
-            text-align: center;
-        }
-
-        form#search-form {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 18px;
-        }
-        input#search-input {
-            flex: 1;
-            padding: 10px 12px;
-            border: 1px solid #d9dfe6;
-            border-radius: 8px;
-            font-size: 15px;
-        }
-        button#search-btn {
-            padding: 10px 16px;
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        button#search-btn:active { transform: translateY(1px); }
-
-        #status {
-            color: #c0392b;
-            margin-bottom: 12px;
-            min-height: 18px;
-        }
-
-        .result-card {
-            border: 1px solid #e6edf3;
-            border-radius: 8px;
-            padding: 14px;
-            margin-bottom: 14px;
-            background: #fff;
-        }
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            align-items: baseline;
-        }
-        .title {
-            font-size: 18px;
-            font-weight: 700;
-            margin: 0;
-        }
-        .score {
-            color: var(--muted);
-            font-size: 13px;
-        }
-        .meta {
-            margin-top: 8px;
-            color: var(--muted);
-            font-size: 14px;
-        }
-        .desc {
-            margin-top: 10px;
-            color: #333;
-            font-size: 14px;
-            line-height: 1.4;
-        }
-
-        .rec-list {
-            margin-top: 12px;
-        }
-        .rec-item {
-            border-left: 3px solid #e6edf3;
-            padding: 10px 12px;
-            margin-bottom: 8px;
-            border-radius: 6px;
-            background: #fafbfd;
-        }
-        .rec-title { font-weight: 600; margin: 0 0 6px 0; font-size: 15px; }
-        .rec-meta { color: var(--muted); font-size: 13px; }
-
-        .empty {
-            color: var(--muted);
-            text-align: center;
-            padding: 24px 0;
-        }
-        @media (max-width:600px) {
-            .container { padding: 12px; }
-            input#search-input { font-size: 14px; }
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пошук фільмів</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
 <div class="container">
-    <h1>🎬 Пошук та рекомендації фільмів</h1>
+    <header class="search-section">
+        <h1> Пошук фільмів</h1>
+        <form id="search-form" autocomplete="off">
+            <input id="search-input" name="q" type="text" placeholder="Який фільм шукаємо?" />
+            <button id="search-btn" type="submit">Пошук</button>
+            <ul id="search-suggestions" class="suggestions"></ul>
+        </form>
+        <div id="status"></div>
+    </header>
 
-    <form id="search-form" autocomplete="off">
-        <input id="search-input" name="q" type="text"
-               placeholder="Введіть точну назву фільму..." />
-        <button id="search-btn" type="submit">Пошук</button>
-    </form>
-
-    <ul id="search-suggestions" class="suggestions"></ul>
-
-
-    <div id="status" aria-live="polite"></div>
-    <div id="results" aria-live="polite">
-        <div class="empty">Введіть назву фільму та натисніть «Пошук».</div>
-    </div>
+    <main id="results">
+        <div class="empty">Результати з'являться тут після натискання «Пошук».</div>
+    </main>
 </div>
-
 
 <script src="script.js"></script>
 </body>

@@ -2,6 +2,9 @@ package handlers;
 
 import com.sun.net.httpserver.HttpExchange;
 import db.MovieDao;
+import exceptions.InvalidInputException;
+import model.Movie;
+
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
@@ -22,16 +25,10 @@ public class DirectorHandler extends BaseHttpHandler {
         String name = extractQueryParam(rawQuery, "name");
 
         if (name == null || name.isBlank()) {
-            sendJson(exchange, List.of());
-            return;
+            throw new InvalidInputException("Director name is required");
         }
 
-        try {
-            List<model.Movie> movies = movieDao.findByDirectorName(name);
-            sendJson(exchange, movies);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            sendJson(exchange, List.of());
-        }
+        List<Movie> movies = movieDao.findByDirectorName(name);
+        sendJson(exchange, movies);
     }
 }

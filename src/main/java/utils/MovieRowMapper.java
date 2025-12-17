@@ -1,7 +1,6 @@
-package db;
+package utils;
 
 import model.Movie;
-import utils.StringListConverter;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

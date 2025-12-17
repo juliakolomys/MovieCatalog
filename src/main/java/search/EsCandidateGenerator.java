@@ -1,8 +1,8 @@
 package search;
 
-import java.io.IOException;
+import services.ElasticsearchService;
+
 import java.util.List;
-import search.ElasticsearchService.HitResult;
 
 public class EsCandidateGenerator implements CandidateGenerator {
 
@@ -12,11 +12,8 @@ public class EsCandidateGenerator implements CandidateGenerator {
         this.es = es;
     }
 
-
-
-    @Override
-    public List<HitResult> generate(String query, int limit) throws IOException {
-        return es.search(query, limit);
+    public List<ElasticsearchService.HitResult> generate(String query, int size) {
+            return es.search(query, size);
     }
 
     public ElasticsearchService getElasticsearchService() {

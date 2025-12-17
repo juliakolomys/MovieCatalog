@@ -1,19 +1,24 @@
+
 const form = document.getElementById('search-form');
 const input = document.getElementById('search-input');
 const statusDiv = document.getElementById('status');
 const resultsDiv = document.getElementById('results');
 const suggestionsList = document.getElementById('search-suggestions');
 
+const urlParams = new URLSearchParams(window.location.search);
+const directorName = urlParams.get("name");
 
-const params = new URLSearchParams(window.location.search);
-const directorName = params.get("name");
+window.addEventListener('DOMContentLoaded', () => {
+    if (directorName && document.getElementById('director-name')) {
+        renderDirectorPage(directorName);
+    }
 
+    if (form) {
+        setupMainPage();
+    }
+});
 
-if (directorName) {
-    document.title = `Фільми режисера: ${directorName}`;
-    loadMoviesByDirector(directorName);
-} else {
-
+function setupMainPage() {
     form.addEventListener('submit', async (ev) => {
         ev.preventDefault();
         await doSearch();
@@ -44,160 +49,122 @@ if (directorName) {
     });
 
     input.addEventListener('blur', () => {
-        setTimeout(() => suggestionsList.innerHTML = '', 200);
+        setTimeout(() => { if(suggestionsList) suggestionsList.innerHTML = ''; }, 200);
     });
 }
 
-
 async function doSearch() {
     const q = input.value.trim();
-    statusDiv.textContent = '';
-    resultsDiv.innerHTML = '';
+    if (statusDiv) statusDiv.textContent = '';
 
     if (!q) {
-        statusDiv.textContent = 'Будь ласка, введіть пошуковий запит.';
-        resultsDiv.innerHTML = '<div class="empty">Введіть назву фільму та натисніть «Пошук».</div>';
+        if (statusDiv) statusDiv.textContent = 'Будь ласка, введіть назву фільму.';
         return;
     }
 
     resultsDiv.innerHTML = '<div class="empty">Завантаження...</div>';
 
     try {
-        const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { method: 'GET' });
+        const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
         const data = await resp.json();
 
-        if (data.status === 'error') {
-            statusDiv.textContent = data.message || 'Помилка';
-            resultsDiv.innerHTML = `<div class="empty">${data.message || 'Помилка при отриманні результатів.'}</div>`;
+        if (data.status === 'error' || !data.movie) {
+            resultsDiv.innerHTML = `<div class="empty">${data.message || 'Фільм не знайдено.'}</div>`;
             return;
         }
 
-        if (data.status !== 'ok' || !data.movie) {
-            resultsDiv.innerHTML = '<div class="empty">Фільми не знайдено.</div>';
-            return;
-        }
+        const mainCard = document.createElement('div');
+        mainCard.className = 'result-card';
 
-        const mainHtml = document.createElement('div');
-        mainHtml.className = 'result-card';
-
-        const header = document.createElement('div');
-        header.className = 'result-header';
-
-        const title = document.createElement('h2');
-        title.className = 'title';
-        title.textContent = data.movie.title || 'Без назви';
-
-        const scoreSpan = document.createElement('div');
-        scoreSpan.className = 'score';
-        scoreSpan.textContent = (typeof data.score === 'number') ? `Релевантність: ${data.score.toFixed(4)}` : 'Релевантність: N/A';
-
-        header.appendChild(title);
-        header.appendChild(scoreSpan);
-        mainHtml.appendChild(header);
-
-        const meta = document.createElement('div');
-        meta.className = 'meta';
-        const genresText = Array.isArray(data.movie.genres) ? data.movie.genres.join(', ') : '';
+        const genresText = Array.isArray(data.movie.genres) ? data.movie.genres.join(', ') : '—';
         const directors = Array.isArray(data.movie.directors) ? data.movie.directors : [];
-
         const directorLinks = directors.map(name => {
-            const encoded = encodeURIComponent(name);
-            return `<a href="/director.html?name=${encoded}" class="director-link">${name}</a>`;
+            return `<a href="director.html?name=${encodeURIComponent(name)}" class="director-link">${name}</a>`;
         }).join(', ');
 
-        meta.innerHTML = `
-            <strong>Жанри:</strong> ${genresText || '—'}<br/>
-            <strong>Режисер:</strong> ${directorLinks || '—'}
+        mainCard.innerHTML = `
+            <div class="movie-poster-placeholder">PICTURE</div>
+            <div class="movie-info">
+                <h2 class="title">${data.movie.title || 'Без назви'}</h2>
+                <div class="meta">
+                    <p><strong>Жанри:</strong> ${genresText}</p>
+                    <p><strong>Режисер:</strong> ${directorLinks}</p>
+                </div>
+                <div class="desc">${data.movie.description || 'Опис відсутній.'}</div>
+            </div>
         `;
-        mainHtml.appendChild(meta);
-
-        if (data.movie.description) {
-            const desc = document.createElement('div');
-            desc.className = 'desc';
-            desc.textContent = data.movie.description;
-            mainHtml.appendChild(desc);
-        }
 
         resultsDiv.innerHTML = '';
-        resultsDiv.appendChild(mainHtml);
+        resultsDiv.appendChild(mainCard);
 
-        const recHeader = document.createElement('h3');
-        recHeader.style.marginTop = '14px';
-        recHeader.textContent = 'Схожі фільми:';
-        resultsDiv.appendChild(recHeader);
+        if (data.recommendations && data.recommendations.length > 0) {
+            const recHeader = document.createElement('h3');
+            recHeader.style.margin = '40px 0 20px 0';
+            recHeader.textContent = 'Схожі фільми:';
+            resultsDiv.appendChild(recHeader);
 
-        if (!Array.isArray(data.recommendations) || data.recommendations.length === 0) {
-            const empty = document.createElement('div');
-            empty.className = 'empty';
-            empty.textContent = 'Схожих фільмів не знайдено.';
-            resultsDiv.appendChild(empty);
-        } else {
+            data.recommendations.sort((a, b) => b.score - a.score);
+
             const recContainer = document.createElement('div');
             recContainer.className = 'rec-list';
 
             data.recommendations.forEach(r => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'rec-item';
+                itemDiv.style.cursor = 'pointer';
 
-                const rt = document.createElement('p');
-                rt.className = 'rec-title';
-                rt.textContent = r.movie?.title || 'Назва відсутня';
+                itemDiv.onclick = () => {
+                    input.value = r.movie.title;
+                    doSearch();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
 
-                const rm = document.createElement('p');
-                rm.className = 'rec-meta';
-                const genres = Array.isArray(r.movie?.genres) ? r.movie.genres.join(', ') : '';
-                rm.innerHTML = `<strong>Жанри:</strong> ${genres || '—'} &nbsp; • &nbsp; <strong>Score:</strong> ${typeof r.score === 'number' ? r.score.toFixed(4) : 'N/A'}`;
+                const scoreVal = typeof r.score === 'number' ? r.score.toFixed(3) : '0';
 
-                itemDiv.appendChild(rt);
-                itemDiv.appendChild(rm);
-
+                itemDiv.innerHTML = `
+                    <p class="rec-title">${r.movie?.title || 'Назва'}</p>
+                    <div class="rec-poster-mini">FILM</div>
+                    <div style="margin-top:8px; font-size:11px; color:var(--accent); font-weight:bold;">
+                        Score: ${scoreVal}
+                    </div>
+                `;
                 recContainer.appendChild(itemDiv);
             });
-
             resultsDiv.appendChild(recContainer);
         }
 
     } catch (err) {
         console.error('Search error', err);
-        statusDiv.textContent = `Помилка: ${err.message}`;
         resultsDiv.innerHTML = '<div class="empty">Помилка при отриманні результатів.</div>';
     }
 }
 
+async function renderDirectorPage(name) {
+    const titleElem = document.getElementById('director-name');
+    const gridElem = document.getElementById('movies-grid');
 
-async function loadMoviesByDirector(name) {
-    const resp = await fetch(`/api/director?name=${encodeURIComponent(name)}`);
-    const movies = await resp.json();
+    if (titleElem) titleElem.textContent = name;
+    document.title = `Режисер: ${name}`;
 
-    if (!Array.isArray(movies) || movies.length === 0) {
-        resultsDiv.innerHTML = `<div class="empty">Фільми не знайдено для режисера "${name}".</div>`;
-        return;
-    }
+    try {
+        const resp = await fetch(`/api/director?name=${encodeURIComponent(name)}`);
+        const movies = await resp.json();
 
-    resultsDiv.innerHTML = '';
-    movies.forEach(m => {
-        const card = document.createElement("div");
-        card.className = "result-card";
-
-        const title = document.createElement("h2");
-        title.className = "title";
-        title.textContent = m.title || "Без назви";
-
-        const meta = document.createElement("div");
-        meta.className = "meta";
-        const genres = Array.isArray(m.genres) ? m.genres.join(", ") : "";
-        meta.innerHTML = `<strong>Жанри:</strong> ${genres || "—"} &nbsp; • &nbsp; <strong>Рік:</strong> ${m.year || "—"}`;
-
-        card.appendChild(title);
-        card.appendChild(meta);
-
-        if (m.description) {
-            const desc = document.createElement("div");
-            desc.className = "desc";
-            desc.textContent = m.description;
-            card.appendChild(desc);
+        if (!Array.isArray(movies) || movies.length === 0) {
+            gridElem.innerHTML = '<div class="empty">Фільмів не знайдено.</div>';
+            return;
         }
 
-        resultsDiv.appendChild(card);
-    });
+        gridElem.innerHTML = movies.map(m => `
+            <div class="rec-item">
+                <p class="rec-title">${m.title || 'Без назви'}</p>
+                <div class="rec-poster-mini">FILM</div>
+                <p style="font-size: 12px; color: #888; margin-top: 5px;">${m.year || ''}</p>
+            </div>
+        `).join('');
+    } catch (err) {
+        if (gridElem) gridElem.innerHTML = '<div class="empty">Помилка завантаження.</div>';
+    }
 }
+
+

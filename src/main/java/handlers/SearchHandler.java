@@ -2,7 +2,7 @@ package handlers;
 
 import com.sun.net.httpserver.HttpExchange;
 import model.SearchResponse;
-import search.RecommendationEngine;
+import services.RecommendationEngine;
 
 import java.io.IOException;
 import java.net.URI;

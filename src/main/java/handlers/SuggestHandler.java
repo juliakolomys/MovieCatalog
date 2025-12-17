@@ -1,7 +1,7 @@
 package handlers;
 
 import com.sun.net.httpserver.HttpExchange;
-import search.ElasticsearchService;
+import services.ElasticsearchService;
 import model.SearchResponse;
 import java.io.IOException;
 import java.util.List;

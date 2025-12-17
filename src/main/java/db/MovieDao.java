@@ -1,23 +1,21 @@
 package db;
 
 import model.Movie;
-
-import java.sql.SQLException;
 import java.util.List;
 
 public interface MovieDao {
 
-    Movie findById(int id) throws SQLException;
+    Movie findById(int id);
 
-    List<Movie> findAll(int limit) throws SQLException;
+    List<Movie> findAll(int limit);
 
-    void save(Movie movie) throws SQLException;
+    void save(Movie movie);
 
-    void saveAll(List<Movie> movies) throws SQLException;
+    void saveAll(List<Movie> movies);
 
-    List<Movie> findByDirectorName(String name) throws SQLException;
+    List<Movie> findByDirectorName(String name);
 
-    List<String> findTitlesByPrefix(String prefix, int limit) throws SQLException;
+    List<Movie> findByIds(List<Integer> ids);
 }
 
 

@@ -1,34 +1,199 @@
-body { font-family: Arial, sans-serif; margin: 20px; }
-h1 { color: darkblue; }
-form { margin-bottom: 20px; }
+/* Глобальні налаштування */
+:root {
+    --card-bg: #ffffff;
+    --muted: #666;
+    --accent: #2067a0;
+    --bg-color: #f0f2f5;
+    --text-main: #1a1a1a;
+    --border-color: #ddd;
+}
 
-
-.suggestions {
-    list-style: none;
+body {
+    font-family: 'Inter', -apple-system, Arial, sans-serif;
+    background: var(--bg-color);
     margin: 0;
-    padding: 0;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    background: #fff;
-    position: absolute;
-    width: calc(100% - 100px); /* ширина поля мінус кнопка */
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 1000;
-}
-.suggestions li {
-    padding: 8px;
-    cursor: pointer;
-}
-.suggestions li:hover {
-    background: #f0f0f0;
+    padding: 40px 20px;
+    color: var(--text-main);
 }
 
-.director-link {
-    color: var(--accent);
-    text-decoration: none;
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
 }
-.director-link:hover {
-    text-decoration: underline;
+
+/* --- СЕКЦІЯ ПОШУКУ --- */
+.search-section {
+    max-width: 600px;
+    margin: 0 auto 50px auto;
+    position: relative; /* Для позиціювання підказок */
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 32px;
+}
+
+form#search-form {
+    display: flex;
+    gap: 12px;
+}
+
+input#search-input {
+    flex: 1;
+    padding: 14px 20px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 16px;
+    outline: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+
+input#search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.1);
+}
+
+button#search-btn {
+    padding: 14px 28px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 16px;
+    transition: background 0.3s;
+}
+
+button#search-btn:hover {
+    background: #113d6c;
+}
+
+
+.suggestions li {
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.suggestions li:hover {
+    background: #f1f3f5;
+}
+
+.result-card {
+    display: flex; /* Фото зліва, текст справа */
+    gap: 32px;
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+    margin-bottom: 50px;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.movie-poster-placeholder {
+    width: 260px;
+    min-width: 260px;
+    height: 380px;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
+    color: #adb5bd;
+    font-weight: 800;
+    letter-spacing: 1px;
+    border: 3px dashed #dee2e6;
+}
+
+.movie-info {
+    flex: 1;
+}
+
+.title {
+    font-size: 32px;
+    margin: 0 0 15px 0;
+    color: #000;
+}
+
+.meta {
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.8;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+}
+
+.desc {
+    margin-top: 20px;
+    font-size: 17px;
+    line-height: 1.6;
+    color: #333;
+}
+
+.rec-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.rec-item {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+
+.rec-item:hover {
+    transform: translateY(-5px);
+}
+
+.rec-title {
+    font-weight: 700;
+    font-size: 15px;
+    margin: 0 0 12px 0;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rec-poster-mini {
+    height: 140px;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 12px;
+    color: #ccc;
+    border: 1px solid #eee;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+/* Допоміжні класи */
+.empty {
+    text-align: center;
+    color: #888;
+    padding: 60px 0;
+    font-size: 18px;
+}
+
+#status {
+    color: #e74c3c;
+    margin-top: 10px;
+    text-align: center;
+    font-size: 14px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
