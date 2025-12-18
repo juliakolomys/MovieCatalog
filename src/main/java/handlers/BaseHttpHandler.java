@@ -48,6 +48,6 @@ public abstract class BaseHttpHandler implements HttpHandler {
         exchange.sendResponseHeaders(statusCode, message.getBytes(StandardCharsets.UTF_8).length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(message.getBytes(StandardCharsets.UTF_8));
-        }
+        }        // для майбутнього розширення проєкту
     }
 }

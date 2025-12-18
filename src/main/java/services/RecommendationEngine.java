@@ -50,12 +50,11 @@ public class RecommendationEngine {
 
         double mainScore = extractMainScore(hits, initialMovieId, mainMovie);
 
-
         Set<Integer> candidateIdsToLoad = new LinkedHashSet<>();
 
         if (hits != null) {
             for (ElasticsearchService.HitResult hit : hits) {
-                if (hit.id != initialMovieId) {
+                if (hit.id != initialMovieId) { //окрім головного
                     candidateIdsToLoad.add(hit.id);
                 }
             }

@@ -10,7 +10,7 @@ public class StringListConverter {
         return Arrays.stream(s.split(","))
                 .map(String::trim)
                 .filter(item -> !item.isBlank())
-                .toList();
+                .toList();   // "Action, , Drama"  -> Action -> Drama
     }
 
     public String join(List<String> list) {

@@ -55,7 +55,7 @@ public class ElasticsearchService implements AutoCloseable {
                     restClient, new JacksonJsonpMapper());
 
             this.client = new ElasticsearchClient(transport);
-            System.out.println("Elasticsearch client connected successfully.");
+            System.out.println("Elasticsearch client connected successfully");
 
         } catch (Exception e) {
             throw new SearchServiceException("Failed to initialize Elasticsearch client connection.", e);
@@ -166,7 +166,7 @@ public class ElasticsearchService implements AutoCloseable {
         if (restClient != null) {
             try {
                 restClient.close();
-                System.out.println("Elasticsearch RestClient closed successfully.");
+                System.out.println("Elasticsearch RestClient closed successfully");
             } catch (IOException e) {
                 System.err.println("Error closing Elasticsearch RestClient: " + e.getMessage());
             }

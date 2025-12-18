@@ -17,7 +17,7 @@ public class Vectorizer {
         if (text == null || text.isBlank()) return List.of();
 
         String normalized = Normalizer.normalize(text, Normalizer.Form.NFD)
-                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "") //é, à -> e, a
                 .toLowerCase(Locale.ROOT);
 
         return Arrays.stream(normalized.split("\\W+"))
